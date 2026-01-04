@@ -1,0 +1,224 @@
+#define USE_ARDUINO_INTERRUPTS true // Set-up low-level interrupts for most acurate BPM math.
+#include <PulseSensorPlayground.h> // Includes the PulseSensorPlayground Library.
+#include<LiquidCrystal.h>
+#include <Wire.h>
+
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
+#define Buzzer 11
+#define Sensor A1
+#define Sensor1 A2
+#define SEALEVELPRESSURE_HPA (1013.25)
+
+Adafruit_BME280 bme; // I2C
+const int bmeVinPin = 12;// 5V pin for BME280
+
+#include <LiquidCrystal_I2C.h>
+// Set the LCD address to 0x27 or 0x3F for a 16 chars and 2 line display
+LiquidCrystal_I2C lcd(0x3F, 16, 2);
+const int PulseWire = 0; // PulseSensor PURPLE WIRE connected to ANALOG PIN 0
+const int LED13 = 13; // The on-board Arduino LED, close to PIN 13.
+int Threshold = 550;
+PulseSensorPlayground pulseSensor;
+void setup() {
+    Serial.begin(9600);
+    pinMode(Buzzer, OUTPUT);
+    pinMode(Sensor1, INPUT);
+    pinMode(bmeVinPin, OUTPUT);// set pin as output
+    digitalWrite(bmeVinPin,HIGH);// always keep it high (5V) for BMB280 module
+    bool status;
+    pulseSensor.analogInput(PulseWire);
+    pulseSensor.blinkOnPulse(LED13); //auto-magically blink Arduino's LED with heartbeat.
+    pulseSensor.setThreshold(Threshold);
+    
+    // default settings
+    // (you can also pass in a Wire library object like &Wire2)
+    status = bme.begin();  
+    if (!status) {
+        Serial.println("Could not find a valid BME280 sensor, check wiring!");
+        while (1);
+    }
+  // initialize the LCD, 
+  lcd.init();
+  // Turn on the blacklight and print a message.
+  lcd.backlight();
+  if (pulseSensor.begin()) {
+  Serial.println("We created a pulseSensor Object !"); //This prints one time at Arduino power-up, or on Arduino reset.
+  lcd.setCursor(0,0);
+  lcd.print(" Heart Rate Monitor");
+ 
+}     
+
+
+}
+
+
+void loop() {
+  int value = analogRead(Sensor);
+  int value1 = analogRead(Sensor1);
+ 
+
+  if (value >600){
+   
+    digitalWrite(Buzzer, HIGH);
+   
+    Serial.println("GAS MQ2 Detected!");
+
+  } else if (value1 >50) {
+    
+    tone(Buzzer, 500);
+  
+    Serial.println("GAS MQ4 Dectected");
+    
+  }else{
+    digitalWrite(Buzzer, LOW);
+  
+    Serial.println("GAS low!");
+    
+  }
+  
+  int myBPM = pulseSensor.getBeatsPerMinute();{
+  lcd.print("HeartBeat Happened !"); // If test is "true", print a message "a heartbeat happened".
+  lcd.setCursor(5,3);
+  lcd.print("BPM: ");
+  lcd.print(myBPM);
+  Serial.println(myBPM);
+}
+  delay(2000);
+    // Robojax.com BME280 Code
+  lcd.clear();// clear previous values from screen
+lcdDisplay(
+             // to print Celsius:
+             0, // character 0 
+             0, // line 0
+             "Celsius: ",
+// to print Celsius
+             99, // character undefined
+             0, // line 0
+             getBME('C'),
+             'd'
+             );  
+             
+         
+  lcdDisplay(
+             // to print humidity text
+             0, // character 0 
+             1, // line 1
+             "Humidity: ", 
+
+             // to print humidity
+             99, // character undefined
+             1, // line 1
+             getBME('H'),
+             '%' 
+             );  
+    delay(3000); 
+  lcd.clear();// clear previous values from screen    
+lcdDisplay(
+             // to print pressure text
+             0, // character 0 
+             0, // line 1
+             "Pres.:", 
+
+             // to print pressure
+             99, // character undefined
+             0, // line 1
+             getBME('P'),
+             'p' 
+             );  
+  lcdDisplay(
+             // to print altitude text
+             0, // character 0 
+             1, // line 1
+             "Ap. Alt.:", 
+
+             // to print Altitude
+             99, // character undefined
+             1, // line 1
+             getBME('A'),
+             'm' 
+             );                   
+    delay(3000);
+  lcd.clear();// clear previous values from screen    
+    
+
+     // Robojax.com BME280 Code
+}// loop end
+
+
+
+float getBME(char type)
+{
+   // Robojax.com BME280 Code
+  float value;
+    float temp = bme.readTemperature();
+  if(type =='F')
+   {
+    value = temp *9/5 + 32;//convert to Fahrenheit 
+   }else if(type =='K')
+   {
+    value = temp + 273.15;//convert to Kelvin
+   }else if(type =='H')
+   {
+    value = bme.readHumidity();// read humidity
+   }else if(type =='P')
+   {
+    value = bme.readPressure() / 100.0F; // read pressure
+   }else if(type =='A')
+   {
+    value = bme.readAltitude(SEALEVELPRESSURE_HPA);// read altitude
+   }else{
+    value = bme.readTemperature();// read temperature
+   }
+   return value;
+    // Robojax.com BME280 Code
+}//getBME
+
+
+
+/*
+ * lcdDisplay(int tc, int tr, String title, int vc, int vr, float value)
+ * displays value and title on LCD1602
+ * How to use:
+ * If you wan to diaplay: "Temp.: 340.45K" starting from first character
+ * on second row.
+ * use:
+ * lcdDisplay(0, 1, "Temp.: ", 340.45,'K')
+ *   
+ *   'd' is degree symbol
+ * tc  is character number  (0)
+ * tr is row in the lcd (1)
+ * title is the text (Voltage:)
+ * vc value for character 
+ * vr value for  row or line
+ * value is the value (13.56)
+ */
+void lcdDisplay(int tc, int tr, String title, int vc, int vr, float value,char symbol)
+{
+   // Robojax.com LCD1602 for BME280 Demo
+
+   lcd.setCursor (tc,tr); //
+   lcd.print(title);
+   if(vc !=99)
+   {
+   lcd.setCursor (vc,vr); //
+   }   
+   lcd.print(value);
+   if(symbol == 'd')
+   {
+    lcd.print((char)223);
+   }else if(symbol =='%')
+   {
+    lcd.print("%");
+   }else if(symbol =='k')
+   {
+    lcd.print("K");
+   }else if(symbol =='p')
+   {
+    lcd.print("hPa");
+   }else if(symbol =='m')
+   {
+    lcd.print("m");
+   }
+
+}
